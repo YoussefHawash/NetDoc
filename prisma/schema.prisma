@@ -163,6 +163,7 @@ model Device {
   status       DeviceStatus @default(active)
   owner        String?
   notes        String?
+  portCount    Int          @default(0)
   positionX    Float        @default(0)
   positionY    Float        @default(0)
   createdAt    DateTime     @default(now())

@@ -12,17 +12,30 @@ function str(formData: FormData, key: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export async function createConnection(deviceAId: string, deviceBId: string) {
+export async function createConnection(
+  deviceAId: string,
+  deviceBId: string,
+  portA?: string | null,
+  portB?: string | null,
+  linkType?: LinkType,
+) {
   if (deviceAId === deviceBId) {
     throw new Error("A device cannot connect to itself");
   }
 
   const connection = await prisma.connection.create({
-    data: { deviceAId, deviceBId },
+    data: {
+      deviceAId,
+      deviceBId,
+      portA: portA || null,
+      portB: portB || null,
+      linkType: linkType ?? undefined,
+    },
   });
 
   revalidatePath("/topology");
   revalidatePath("/report");
+  revalidatePath("/", "layout");
 
   return connection;
 }

@@ -38,6 +38,7 @@ type Device = {
   status: DeviceStatus;
   owner: string | null;
   notes: string | null;
+  portCount: number;
   siteId: string | null;
   subnetId: string | null;
 };
@@ -209,6 +210,17 @@ export function DeviceFormDialog({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="owner">Owner</Label>
             <Input id="owner" name="owner" defaultValue={device?.owner ?? ""} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="portCount">Port Count</Label>
+            <Input
+              id="portCount"
+              name="portCount"
+              type="number"
+              min={0}
+              max={512}
+              defaultValue={device?.portCount ?? 0}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="subnetId">Subnet</Label>

@@ -33,6 +33,12 @@ function buildDeviceData(formData: FormData) {
     throw new Error(`Invalid IPv4 address: ${ipAddress}`);
   }
 
+  const portCountRaw = str(formData, "portCount");
+  const portCount = portCountRaw ? Number(portCountRaw) : 0;
+  if (!Number.isInteger(portCount) || portCount < 0 || portCount > 512) {
+    throw new Error("Port count must be an integer between 0 and 512");
+  }
+
   return {
     hostname,
     ipAddress,
@@ -48,6 +54,7 @@ function buildDeviceData(formData: FormData) {
     ),
     owner: str(formData, "owner"),
     notes: str(formData, "notes"),
+    portCount,
     siteId: str(formData, "siteId"),
     subnetId: str(formData, "subnetId"),
   };

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { deleteDevice } from "@/lib/actions/devices";
 import { DeviceFormDialog } from "@/components/devices/device-form-dialog";
+import { PortPanel } from "@/components/ports/port-panel";
 import { DeleteButton } from "@/components/delete-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,23 +33,29 @@ export default async function DeviceDetailPage({
 }) {
   const { id } = await params;
 
-  const [device, sites, subnets, vendors, deviceModels] = await Promise.all([
-    prisma.device.findUnique({
-      where: { id },
-      include: {
-        site: true,
-        subnet: true,
-        vendor: true,
-        deviceModel: true,
-        connectionsA: { include: { deviceB: true } },
-        connectionsB: { include: { deviceA: true } },
-      },
-    }),
-    prisma.site.findMany({ orderBy: { name: "asc" } }),
-    prisma.subnet.findMany({ orderBy: { name: "asc" } }),
-    prisma.vendor.findMany({ orderBy: { name: "asc" } }),
-    prisma.deviceModel.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const [device, sites, subnets, vendors, deviceModels, otherDevices] =
+    await Promise.all([
+      prisma.device.findUnique({
+        where: { id },
+        include: {
+          site: true,
+          subnet: true,
+          vendor: true,
+          deviceModel: true,
+          connectionsA: { include: { deviceB: true } },
+          connectionsB: { include: { deviceA: true } },
+        },
+      }),
+      prisma.site.findMany({ orderBy: { name: "asc" } }),
+      prisma.subnet.findMany({ orderBy: { name: "asc" } }),
+      prisma.vendor.findMany({ orderBy: { name: "asc" } }),
+      prisma.deviceModel.findMany({ orderBy: { name: "asc" } }),
+      prisma.device.findMany({
+        where: { id: { not: id } },
+        orderBy: { hostname: "asc" },
+        select: { id: true, hostname: true },
+      }),
+    ]);
 
   if (!device) notFound();
 
@@ -58,12 +65,16 @@ export default async function DeviceDetailPage({
       peer: c.deviceB,
       linkType: c.linkType,
       label: c.label,
+      portOnThisDevice: c.portA,
+      portOnPeer: c.portB,
     })),
     ...device.connectionsB.map((c) => ({
       id: c.id,
       peer: c.deviceA,
       linkType: c.linkType,
       label: c.label,
+      portOnThisDevice: c.portB,
+      portOnPeer: c.portA,
     })),
   ];
 
@@ -149,6 +160,28 @@ export default async function DeviceDetailPage({
             <p className="mt-1 text-sm whitespace-pre-wrap">{device.notes}</p>
           </CardContent>
         )}
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ports</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PortPanel
+            deviceId={device.id}
+            portCount={device.portCount}
+            connections={connections.map((c) => ({
+              id: c.id,
+              portOnThisDevice: c.portOnThisDevice,
+              peerId: c.peer.id,
+              peerHostname: c.peer.hostname,
+              portOnPeer: c.portOnPeer,
+              linkType: c.linkType,
+              label: c.label,
+            }))}
+            otherDevices={otherDevices}
+          />
+        </CardContent>
       </Card>
 
       <Card>

@@ -4,7 +4,7 @@ import { DeviceFormDialog } from "@/components/devices/device-form-dialog";
 import { Button } from "@/components/ui/button";
 
 export default async function TopologyPage() {
-  const [devices, connections, sites, subnets] = await Promise.all([
+  const [devices, connections, sites, subnets, vendors, deviceModels] = await Promise.all([
     prisma.device.findMany({
       orderBy: { hostname: "asc" },
       select: {
@@ -30,6 +30,8 @@ export default async function TopologyPage() {
     }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
     prisma.subnet.findMany({ orderBy: { name: "asc" } }),
+    prisma.vendor.findMany({ orderBy: { name: "asc" } }),
+    prisma.deviceModel.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -45,6 +47,8 @@ export default async function TopologyPage() {
         <DeviceFormDialog
           sites={sites}
           subnets={subnets}
+          vendors={vendors}
+          deviceModels={deviceModels}
           trigger={<Button>Add Device</Button>}
         />
       </div>

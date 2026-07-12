@@ -32,18 +32,22 @@ export default async function DeviceDetailPage({
 }) {
   const { id } = await params;
 
-  const [device, sites, subnets] = await Promise.all([
+  const [device, sites, subnets, vendors, deviceModels] = await Promise.all([
     prisma.device.findUnique({
       where: { id },
       include: {
         site: true,
         subnet: true,
+        vendor: true,
+        deviceModel: true,
         connectionsA: { include: { deviceB: true } },
         connectionsB: { include: { deviceA: true } },
       },
     }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
     prisma.subnet.findMany({ orderBy: { name: "asc" } }),
+    prisma.vendor.findMany({ orderBy: { name: "asc" } }),
+    prisma.deviceModel.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   if (!device) notFound();
@@ -93,6 +97,8 @@ export default async function DeviceDetailPage({
             device={device}
             sites={sites}
             subnets={subnets}
+            vendors={vendors}
+            deviceModels={deviceModels}
             trigger={<Button variant="outline">Edit</Button>}
           />
           <DeleteButton
@@ -109,10 +115,9 @@ export default async function DeviceDetailPage({
         <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Field label="IP Address" value={device.ipAddress} />
           <Field label="MAC Address" value={device.macAddress} />
-          <Field label="Vendor" value={device.vendor} />
-          <Field label="Model" value={device.model} />
+          <Field label="Vendor" value={device.vendor?.name} />
+          <Field label="Model" value={device.deviceModel?.name} />
           <Field label="Serial Number" value={device.serialNumber} />
-          <Field label="OS" value={device.os} />
           <Field label="Owner" value={device.owner} />
           <Field
             label="Site"
@@ -135,22 +140,6 @@ export default async function DeviceDetailPage({
                   {device.subnet.name} ({device.subnet.cidr})
                 </Link>
               ) : null
-            }
-          />
-          <Field
-            label="Purchase Date"
-            value={
-              device.purchaseDate
-                ? device.purchaseDate.toISOString().slice(0, 10)
-                : null
-            }
-          />
-          <Field
-            label="Warranty Expiry"
-            value={
-              device.warrantyExpiry
-                ? device.warrantyExpiry.toISOString().slice(0, 10)
-                : null
             }
           />
         </CardContent>

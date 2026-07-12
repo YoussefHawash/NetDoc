@@ -13,6 +13,28 @@ async function main() {
   await prisma.device.deleteMany();
   await prisma.subnet.deleteMany();
   await prisma.site.deleteMany();
+  await prisma.deviceModel.deleteMany();
+  await prisma.vendor.deleteMany();
+
+  const vendorNames = ["Cisco", "Fortinet", "Dell", "HP"];
+  const modelNames = [
+    "ISR 4331",
+    "ISR 1101",
+    "Catalyst 9300",
+    "FortiGate 100F",
+    "PowerEdge R650",
+    "OptiPlex 7010",
+    "LaserJet Enterprise M507",
+  ];
+
+  const vendors: Record<string, { id: string }> = {};
+  for (const name of vendorNames) {
+    vendors[name] = await prisma.vendor.create({ data: { name } });
+  }
+  const models: Record<string, { id: string }> = {};
+  for (const name of modelNames) {
+    models[name] = await prisma.deviceModel.create({ data: { name } });
+  }
 
   const hq = await prisma.site.create({
     data: { name: "Headquarters", address: "1 Main St, Springfield" },
@@ -55,8 +77,8 @@ async function main() {
         hostname: "core-rtr-01",
         ipAddress: "10.0.0.1",
         type: "router",
-        vendor: "Cisco",
-        model: "ISR 4331",
+        vendorId: vendors["Cisco"].id,
+        deviceModelId: models["ISR 4331"].id,
         status: "active",
         owner: "IT Infrastructure",
         siteId: hq.id,
@@ -70,8 +92,8 @@ async function main() {
         hostname: "core-sw-01",
         ipAddress: "10.0.0.2",
         type: "switch",
-        vendor: "Cisco",
-        model: "Catalyst 9300",
+        vendorId: vendors["Cisco"].id,
+        deviceModelId: models["Catalyst 9300"].id,
         status: "active",
         owner: "IT Infrastructure",
         siteId: hq.id,
@@ -85,8 +107,8 @@ async function main() {
         hostname: "fw-01",
         ipAddress: "10.0.0.3",
         type: "firewall",
-        vendor: "Fortinet",
-        model: "FortiGate 100F",
+        vendorId: vendors["Fortinet"].id,
+        deviceModelId: models["FortiGate 100F"].id,
         status: "active",
         owner: "IT Security",
         siteId: hq.id,
@@ -100,9 +122,8 @@ async function main() {
         hostname: "file-srv-01",
         ipAddress: "10.0.0.4",
         type: "server",
-        vendor: "Dell",
-        model: "PowerEdge R650",
-        os: "Windows Server 2022",
+        vendorId: vendors["Dell"].id,
+        deviceModelId: models["PowerEdge R650"].id,
         status: "active",
         owner: "IT Infrastructure",
         siteId: hq.id,
@@ -116,9 +137,8 @@ async function main() {
         hostname: "dc-01",
         ipAddress: "10.0.0.5",
         type: "server",
-        vendor: "Dell",
-        model: "PowerEdge R650",
-        os: "Windows Server 2022",
+        vendorId: vendors["Dell"].id,
+        deviceModelId: models["PowerEdge R650"].id,
         status: "active",
         owner: "IT Infrastructure",
         notes: "Primary domain controller",
@@ -136,9 +156,8 @@ async function main() {
         hostname: "ws-accounting-01",
         ipAddress: "10.0.1.10",
         type: "workstation",
-        vendor: "Dell",
-        model: "OptiPlex 7010",
-        os: "Windows 11",
+        vendorId: vendors["Dell"].id,
+        deviceModelId: models["OptiPlex 7010"].id,
         status: "active",
         owner: "Jane Doe",
         siteId: hq.id,
@@ -152,8 +171,8 @@ async function main() {
         hostname: "printer-2f-01",
         ipAddress: "10.0.1.20",
         type: "printer",
-        vendor: "HP",
-        model: "LaserJet Enterprise M507",
+        vendorId: vendors["HP"].id,
+        deviceModelId: models["LaserJet Enterprise M507"].id,
         status: "active",
         siteId: hq.id,
         subnetId: usersSubnet.id,
@@ -168,8 +187,8 @@ async function main() {
       hostname: "branch-rtr-01",
       ipAddress: "10.1.0.1",
       type: "router",
-      vendor: "Cisco",
-      model: "ISR 1101",
+      vendorId: vendors["Cisco"].id,
+      deviceModelId: models["ISR 1101"].id,
       status: "maintenance",
       owner: "IT Infrastructure",
       notes: "Scheduled firmware upgrade next quarter",

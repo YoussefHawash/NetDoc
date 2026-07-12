@@ -45,7 +45,7 @@ export default async function DevicesPage({
     ...(status && { status: status as DeviceStatus }),
   };
 
-  const [devices, sites, subnets] = await Promise.all([
+  const [devices, sites, subnets, vendors, deviceModels] = await Promise.all([
     prisma.device.findMany({
       where,
       orderBy: { hostname: "asc" },
@@ -53,6 +53,8 @@ export default async function DevicesPage({
     }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
     prisma.subnet.findMany({ orderBy: { name: "asc" } }),
+    prisma.vendor.findMany({ orderBy: { name: "asc" } }),
+    prisma.deviceModel.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -64,11 +66,18 @@ export default async function DevicesPage({
             {devices.length} device{devices.length === 1 ? "" : "s"}
           </p>
         </div>
-        <DeviceFormDialog
-          sites={sites}
-          subnets={subnets}
-          trigger={<Button>Add Device</Button>}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" render={<Link href="/devices/catalog" />}>
+            Manage Catalog
+          </Button>
+          <DeviceFormDialog
+            sites={sites}
+            subnets={subnets}
+            vendors={vendors}
+            deviceModels={deviceModels}
+            trigger={<Button>Add Device</Button>}
+          />
+        </div>
       </div>
 
       <form className="flex flex-wrap gap-3" method="get">
@@ -175,6 +184,8 @@ export default async function DevicesPage({
                       device={device}
                       sites={sites}
                       subnets={subnets}
+                      vendors={vendors}
+                      deviceModels={deviceModels}
                       trigger={
                         <Button variant="outline" size="sm">
                           Edit

@@ -17,13 +17,15 @@ export default async function SubnetDetailPage({
 }) {
   const { id } = await params;
 
-  const [subnet, sites, subnets] = await Promise.all([
+  const [subnet, sites, subnets, vendors, deviceModels] = await Promise.all([
     prisma.subnet.findUnique({
       where: { id },
       include: { site: true, devices: true },
     }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
     prisma.subnet.findMany({ orderBy: { name: "asc" } }),
+    prisma.vendor.findMany({ orderBy: { name: "asc" } }),
+    prisma.deviceModel.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   if (!subnet) notFound();
@@ -162,6 +164,8 @@ export default async function SubnetDetailPage({
                       <DeviceFormDialog
                         sites={sites}
                         subnets={subnets}
+                        vendors={vendors}
+                        deviceModels={deviceModels}
                         defaultSubnetId={subnet.id}
                         defaultIpAddress={a.ip}
                         trigger={

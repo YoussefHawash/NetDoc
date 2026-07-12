@@ -14,13 +14,6 @@ function str(formData: FormData, key: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function dateOrNull(formData: FormData, key: string): Date | null {
-  const value = str(formData, key);
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function enumOrDefault<T extends string>(
   value: string | null,
   allowed: Record<string, T>,
@@ -45,10 +38,9 @@ function buildDeviceData(formData: FormData) {
     ipAddress,
     macAddress: str(formData, "macAddress"),
     type: enumOrDefault(str(formData, "type"), DeviceType, DeviceType.other),
-    vendor: str(formData, "vendor"),
-    model: str(formData, "model"),
+    vendorId: str(formData, "vendorId"),
+    deviceModelId: str(formData, "deviceModelId"),
     serialNumber: str(formData, "serialNumber"),
-    os: str(formData, "os"),
     status: enumOrDefault(
       str(formData, "status"),
       DeviceStatus,
@@ -56,8 +48,6 @@ function buildDeviceData(formData: FormData) {
     ),
     owner: str(formData, "owner"),
     notes: str(formData, "notes"),
-    purchaseDate: dateOrNull(formData, "purchaseDate"),
-    warrantyExpiry: dateOrNull(formData, "warrantyExpiry"),
     siteId: str(formData, "siteId"),
     subnetId: str(formData, "subnetId"),
   };

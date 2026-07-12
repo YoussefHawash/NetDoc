@@ -59,7 +59,7 @@ export default async function ReportPage() {
     await Promise.all([
       prisma.device.findMany({
         orderBy: { hostname: "asc" },
-        include: { site: true, subnet: true },
+        include: { site: true, subnet: true, vendor: true, deviceModel: true },
       }),
       prisma.subnet.findMany({
         orderBy: { name: "asc" },
@@ -213,7 +213,9 @@ export default async function ReportPage() {
                 <TableCell className="font-mono">{device.ipAddress ?? "—"}</TableCell>
                 <TableCell className="font-mono">{device.macAddress ?? "—"}</TableCell>
                 <TableCell>
-                  {[device.vendor, device.model].filter(Boolean).join(" / ") || "—"}
+                  {[device.vendor?.name, device.deviceModel?.name]
+                    .filter(Boolean)
+                    .join(" / ") || "—"}
                 </TableCell>
                 <TableCell>{device.status}</TableCell>
                 <TableCell>{device.site?.name ?? "—"}</TableCell>

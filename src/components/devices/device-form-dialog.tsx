@@ -32,23 +32,15 @@ type Device = {
   ipAddress: string | null;
   macAddress: string | null;
   type: DeviceType;
-  vendor: string | null;
-  model: string | null;
+  vendorId: string | null;
+  deviceModelId: string | null;
   serialNumber: string | null;
-  os: string | null;
   status: DeviceStatus;
   owner: string | null;
   notes: string | null;
-  purchaseDate: Date | null;
-  warrantyExpiry: Date | null;
   siteId: string | null;
   subnetId: string | null;
 };
-
-function toDateInputValue(date: Date | null): string {
-  if (!date) return "";
-  return date.toISOString().slice(0, 10);
-}
 
 const statusLabels: Record<DeviceStatus, string> = {
   active: "Active",
@@ -60,6 +52,8 @@ export function DeviceFormDialog({
   device,
   sites,
   subnets,
+  vendors,
+  deviceModels,
   trigger,
   defaultSubnetId,
   defaultIpAddress,
@@ -67,6 +61,8 @@ export function DeviceFormDialog({
   device?: Device;
   sites: { id: string; name: string }[];
   subnets: { id: string; name: string; cidr: string }[];
+  vendors: { id: string; name: string }[];
+  deviceModels: { id: string; name: string }[];
   trigger: React.ReactNode;
   defaultSubnetId?: string;
   defaultIpAddress?: string;
@@ -168,12 +164,39 @@ export function DeviceFormDialog({
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="vendor">Vendor</Label>
-            <Input id="vendor" name="vendor" defaultValue={device?.vendor ?? ""} />
+            <Label htmlFor="vendorId">Vendor</Label>
+            <Select name="vendorId" defaultValue={device?.vendorId ?? ""}>
+              <SelectTrigger id="vendorId" className="w-full">
+                <SelectValue placeholder="No vendor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No vendor</SelectItem>
+                {vendors.map((vendor) => (
+                  <SelectItem key={vendor.id} value={vendor.id}>
+                    {vendor.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="model">Model</Label>
-            <Input id="model" name="model" defaultValue={device?.model ?? ""} />
+            <Label htmlFor="deviceModelId">Model</Label>
+            <Select
+              name="deviceModelId"
+              defaultValue={device?.deviceModelId ?? ""}
+            >
+              <SelectTrigger id="deviceModelId" className="w-full">
+                <SelectValue placeholder="No model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No model</SelectItem>
+                {deviceModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="serialNumber">Serial Number</Label>
@@ -182,10 +205,6 @@ export function DeviceFormDialog({
               name="serialNumber"
               defaultValue={device?.serialNumber ?? ""}
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="os">OS</Label>
-            <Input id="os" name="os" defaultValue={device?.os ?? ""} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="owner">Owner</Label>
@@ -225,24 +244,6 @@ export function DeviceFormDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="purchaseDate">Purchase Date</Label>
-            <Input
-              id="purchaseDate"
-              name="purchaseDate"
-              type="date"
-              defaultValue={toDateInputValue(device?.purchaseDate ?? null)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="warrantyExpiry">Warranty Expiry</Label>
-            <Input
-              id="warrantyExpiry"
-              name="warrantyExpiry"
-              type="date"
-              defaultValue={toDateInputValue(device?.warrantyExpiry ?? null)}
-            />
           </div>
           <div className="col-span-2 flex flex-col gap-1.5">
             <Label htmlFor="notes">Notes</Label>

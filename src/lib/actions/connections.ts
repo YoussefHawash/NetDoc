@@ -23,6 +23,46 @@ export async function createConnection(
     throw new Error("A device cannot connect to itself");
   }
 
+  // A cable is one physical link. If the other side already started this
+  // same connection (e.g. from its own port panel) and hasn't set its port
+  // yet, fill that in instead of creating a second, duplicate connection.
+  const existing = await prisma.connection.findFirst({
+    where: {
+      OR: [
+        { deviceAId, deviceBId },
+        { deviceAId: deviceBId, deviceBId: deviceAId },
+      ],
+    },
+  });
+
+  if (existing) {
+    const iAmDeviceA = existing.deviceAId === deviceAId;
+    const mySideIsEmpty = iAmDeviceA ? !existing.portA : !existing.portB;
+
+    if (mySideIsEmpty) {
+      const connection = await prisma.connection.update({
+        where: { id: existing.id },
+        data: iAmDeviceA
+          ? {
+              portA: portA || existing.portA,
+              portB: portB || existing.portB,
+              linkType: linkType ?? undefined,
+            }
+          : {
+              portB: portA || existing.portB,
+              portA: portB || existing.portA,
+              linkType: linkType ?? undefined,
+            },
+      });
+
+      revalidatePath("/topology");
+      revalidatePath("/report");
+      revalidatePath("/", "layout");
+
+      return connection;
+    }
+  }
+
   const connection = await prisma.connection.create({
     data: {
       deviceAId,

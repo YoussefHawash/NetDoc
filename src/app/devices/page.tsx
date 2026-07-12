@@ -67,6 +67,9 @@ export default async function DevicesPage({
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" render={<Link href="/devices/import" />}>
+            Import
+          </Button>
           <Button variant="outline" render={<Link href="/devices/catalog" />}>
             Manage Catalog
           </Button>

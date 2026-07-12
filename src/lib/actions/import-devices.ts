@@ -3,10 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { isValidIp } from "@/lib/subnet";
-
-export type ImportState = { error: string | null; summary?: string };
-
-export const initialImportState: ImportState = { error: null };
+import type { ImportState } from "@/lib/actions/types";
 
 // Vendor names from nmap/MAC-OUI lookups frequently contain commas (e.g.
 // "TP-LINK TECHNOLOGIES CO.,LTD."). Tools that quote such fields (including

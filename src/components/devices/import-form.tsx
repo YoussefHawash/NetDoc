@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { importDevices, initialImportState } from "@/lib/actions/import-devices";
+import { importDevices } from "@/lib/actions/import-devices";
+import { initialImportState } from "@/lib/actions/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {

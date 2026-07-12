@@ -5,7 +5,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const adapter = new PrismaPg(process.env.DATABASE_URL!);
+// Cap the pool size per client instance. Vercel can spin up several separate
+// instances (build-time static generation, multiple serverless functions),
+// each with its own pool - a high per-instance max can exhaust a small
+// Postgres plan's total connection limit even though no single instance is
+// under heavy concurrent load.
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+  max: 1,
+});
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 

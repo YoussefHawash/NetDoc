@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { parseCidr, buildAllocationTable } from "@/lib/subnet";
+import { parseCidr, buildAllocationTable, type IpOccupant } from "@/lib/subnet";
 import { PrintButton } from "@/components/print-button";
 import { StaticTopology } from "@/components/topology/static-topology";
 import {
@@ -63,7 +63,7 @@ export default async function ReportPage() {
       }),
       prisma.subnet.findMany({
         orderBy: { name: "asc" },
-        include: { site: true, devices: true },
+        include: { site: true, devices: true, staticIps: true },
       }),
       prisma.site.findMany({ orderBy: { name: "asc" } }),
       prisma.connection.findMany({
@@ -101,6 +101,15 @@ export default async function ReportPage() {
   });
 
   const subnetStats = subnets.map((subnet) => {
+    const occupants: IpOccupant[] = [
+      ...subnet.devices.map((d) => ({ ...d, kind: "device" as const })),
+      ...subnet.staticIps.map((s) => ({
+        id: s.id,
+        hostname: s.hostname ?? s.ipAddress,
+        ipAddress: s.ipAddress,
+        kind: "staticIp" as const,
+      })),
+    ];
     let usableCount = 0;
     let usedCount = 0;
     let valid = true;
@@ -109,10 +118,9 @@ export default async function ReportPage() {
       usableCount = parsed.usableCount;
       usedCount =
         usableCount <= 1024
-          ? buildAllocationTable(subnet.cidr, subnet.devices).filter(
-              (a) => a.used,
-            ).length
-          : subnet.devices.filter((d) => d.ipAddress).length;
+          ? buildAllocationTable(subnet.cidr, occupants).filter((a) => a.used)
+              .length
+          : occupants.filter((o) => o.ipAddress).length;
     } catch {
       valid = false;
     }

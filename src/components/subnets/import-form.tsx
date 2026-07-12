@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { importDevices } from "@/lib/actions/import-devices";
+import { importStaticIps } from "@/lib/actions/import-static-ips";
 import { initialImportState } from "@/lib/actions/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,7 @@ export function ImportForm({
   subnets: { id: string; name: string; cidr: string }[];
 }) {
   const [state, formAction, isPending] = useActionState(
-    importDevices,
+    importStaticIps,
     initialImportState,
   );
   const wasPending = useRef(false);
@@ -53,13 +53,14 @@ export function ImportForm({
           className="rounded-md border border-input bg-transparent px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-2.5 file:py-1 file:text-sm file:font-medium"
         />
         <p className="text-xs text-muted-foreground">
-          Columns: hostname, ipAddress, macAddress, vendor. Matched to existing
-          devices by IP (or hostname if no IP), so re-importing the same scan
-          updates rather than duplicates.
+          Columns: hostname, ipAddress, macAddress, vendor. Creates/updates
+          Static IP entries only (matched by IP) so you can see how full a
+          subnet is — it does not touch your device inventory or topology
+          diagram.
         </p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="subnetId">Assign to subnet (optional)</Label>
+        <Label htmlFor="subnetId">Subnet</Label>
         <Select name="subnetId" defaultValue="">
           <SelectTrigger id="subnetId" className="w-full">
             <SelectValue placeholder="No subnet" />
@@ -75,7 +76,7 @@ export function ImportForm({
         </Select>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="siteId">Assign to site (optional)</Label>
+        <Label htmlFor="siteId">Site (optional)</Label>
         <Select name="siteId" defaultValue="">
           <SelectTrigger id="siteId" className="w-full">
             <SelectValue placeholder="No site" />

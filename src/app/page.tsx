@@ -20,7 +20,10 @@ export default async function DashboardPage() {
       prisma.connection.count(),
       prisma.device.groupBy({ by: ["status"], _count: true }),
       prisma.subnet.findMany({
-        include: { devices: { select: { ipAddress: true } } },
+        include: {
+          devices: { select: { ipAddress: true } },
+          staticIps: { select: { ipAddress: true } },
+        },
       }),
       prisma.device.findMany({
         orderBy: { updatedAt: "desc" },
@@ -44,7 +47,14 @@ export default async function DashboardPage() {
     try {
       const parsed = parseCidr(subnet.cidr);
       totalUsable += parsed.usableCount;
-      totalUsed += subnet.devices.filter((d) => d.ipAddress).length;
+      // Dedupe in case a static IP reservation was later assigned to an
+      // actual device without removing the reservation.
+      const usedIps = new Set(
+        [...subnet.devices, ...subnet.staticIps]
+          .map((o) => o.ipAddress)
+          .filter((ip): ip is string => !!ip),
+      );
+      totalUsed += usedIps.size;
     } catch {
       // skip subnets with invalid CIDR
     }

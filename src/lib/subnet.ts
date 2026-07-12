@@ -103,29 +103,38 @@ export function listUsableIps(cidr: string, limit = 65536): string[] {
   return ips;
 }
 
+export type IpOccupant = {
+  id: string;
+  hostname: string;
+  ipAddress: string | null;
+  kind: "device" | "staticIp";
+};
+
 export type IpAllocation = {
   ip: string;
   used: boolean;
-  deviceId: string | null;
+  occupantId: string | null;
+  occupantKind: "device" | "staticIp" | null;
   hostname: string | null;
 };
 
 export function buildAllocationTable(
   cidr: string,
-  devices: { id: string; hostname: string; ipAddress: string | null }[],
+  occupants: IpOccupant[],
   limit = 65536,
 ): IpAllocation[] {
   const byIp = new Map(
-    devices.filter((d) => d.ipAddress).map((d) => [d.ipAddress as string, d]),
+    occupants.filter((o) => o.ipAddress).map((o) => [o.ipAddress as string, o]),
   );
 
   return listUsableIps(cidr, limit).map((ip) => {
-    const device = byIp.get(ip);
+    const occupant = byIp.get(ip);
     return {
       ip,
-      used: !!device,
-      deviceId: device?.id ?? null,
-      hostname: device?.hostname ?? null,
+      used: !!occupant,
+      occupantId: occupant?.id ?? null,
+      occupantKind: occupant?.kind ?? null,
+      hostname: occupant?.hostname ?? null,
     };
   });
 }

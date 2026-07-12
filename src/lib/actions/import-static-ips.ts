@@ -57,7 +57,10 @@ function parseCsv(text: string): Record<string, string>[] {
   });
 }
 
-export async function importDevices(
+// This only fills in the IP allocation picture for a subnet (so you can see
+// how full it is) - it deliberately does NOT touch the Device inventory or
+// the topology diagram, which are curated separately.
+export async function importStaticIps(
   _prevState: ImportState,
   formData: FormData,
 ): Promise<ImportState> {
@@ -77,7 +80,7 @@ export async function importDevices(
 
   type Row = {
     hostname: string | null;
-    ipAddress: string | null;
+    ipAddress: string;
     macAddress: string | null;
     vendorName: string | null;
   };
@@ -86,68 +89,35 @@ export async function importDevices(
   let skipped = 0;
   for (const raw of parsedRows) {
     const hostname = raw.hostname?.trim() || null;
-    const ipAddress = raw.ipAddress?.trim() || null;
+    const ipAddress = raw.ipAddress?.trim() || "";
     const macAddress = raw.macAddress?.trim() || null;
     const vendorName = raw.vendor?.trim() || null;
 
-    if (!hostname && !ipAddress) {
-      skipped++;
-      continue;
-    }
-    if (ipAddress && !isValidIp(ipAddress)) {
+    // A static IP entry only means something with an actual address.
+    if (!ipAddress || !isValidIp(ipAddress)) {
       skipped++;
       continue;
     }
     rows.push({ hostname, ipAddress, macAddress, vendorName });
   }
 
-  // Resolve all vendor names up front in a small, constant number of
-  // queries instead of one upsert per row.
-  const distinctVendorNames = [...new Set(rows.map((r) => r.vendorName).filter((v): v is string => !!v))];
-  const vendorIdByName = new Map<string, string>();
-  if (distinctVendorNames.length > 0) {
-    const existingVendors = await prisma.vendor.findMany({
-      where: { name: { in: distinctVendorNames } },
-    });
-    for (const v of existingVendors) vendorIdByName.set(v.name, v.id);
-
-    const missingVendorNames = distinctVendorNames.filter((n) => !vendorIdByName.has(n));
-    if (missingVendorNames.length > 0) {
-      await prisma.vendor.createMany({
-        data: missingVendorNames.map((name) => ({ name })),
-        skipDuplicates: true,
-      });
-      const created = await prisma.vendor.findMany({
-        where: { name: { in: missingVendorNames } },
-      });
-      for (const v of created) vendorIdByName.set(v.name, v.id);
-    }
+  if (rows.length === 0) {
+    return { error: "No rows had a valid IP address" };
   }
 
-  // Look up every existing device this batch could touch in one query,
+  // Look up every existing entry this batch could touch in one query,
   // instead of one findFirst per row.
-  const ips = [...new Set(rows.map((r) => r.ipAddress).filter((v): v is string => !!v))];
-  const hostnamesWithoutIp = [
-    ...new Set(rows.filter((r) => !r.ipAddress && r.hostname).map((r) => r.hostname as string)),
-  ];
-  const existingDevices = await prisma.device.findMany({
-    where: {
-      OR: [
-        ...(ips.length > 0 ? [{ ipAddress: { in: ips } }] : []),
-        ...(hostnamesWithoutIp.length > 0 ? [{ hostname: { in: hostnamesWithoutIp } }] : []),
-      ],
-    },
+  const ips = [...new Set(rows.map((r) => r.ipAddress))];
+  const existing = await prisma.staticIp.findMany({
+    where: { ipAddress: { in: ips } },
   });
-  const existingByIp = new Map(
-    existingDevices.filter((d) => d.ipAddress).map((d) => [d.ipAddress as string, d]),
-  );
-  const existingByHostname = new Map(existingDevices.map((d) => [d.hostname, d]));
+  const existingByIp = new Map(existing.map((e) => [e.ipAddress, e]));
 
   const toCreate: {
-    hostname: string;
-    ipAddress: string | null;
+    ipAddress: string;
+    hostname: string | null;
     macAddress: string | null;
-    vendorId: string | null;
+    notes: string | null;
     siteId: string | null;
     subnetId: string | null;
   }[] = [];
@@ -156,31 +126,29 @@ export async function importDevices(
   let updated = 0;
 
   for (const row of rows) {
-    const vendorId = row.vendorName ? (vendorIdByName.get(row.vendorName) ?? null) : null;
-    const existing = row.ipAddress
-      ? existingByIp.get(row.ipAddress)
-      : existingByHostname.get(row.hostname!);
+    const notes = row.vendorName ? `Vendor: ${row.vendorName}` : null;
+    const match = existingByIp.get(row.ipAddress);
 
-    if (existing) {
+    if (match) {
       updates.push(
-        prisma.device.update({
-          where: { id: existing.id },
+        prisma.staticIp.update({
+          where: { id: match.id },
           data: {
-            hostname: row.hostname ?? existing.hostname,
-            macAddress: row.macAddress ?? existing.macAddress,
-            vendorId: vendorId ?? existing.vendorId,
-            siteId: siteId ?? existing.siteId,
-            subnetId: subnetId ?? existing.subnetId,
+            hostname: row.hostname ?? match.hostname,
+            macAddress: row.macAddress ?? match.macAddress,
+            notes: notes ?? match.notes,
+            siteId: siteId ?? match.siteId,
+            subnetId: subnetId ?? match.subnetId,
           },
         }),
       );
       updated++;
     } else {
       toCreate.push({
-        hostname: row.hostname ?? row.ipAddress!,
         ipAddress: row.ipAddress,
+        hostname: row.hostname,
         macAddress: row.macAddress,
-        vendorId,
+        notes,
         siteId,
         subnetId,
       });
@@ -189,7 +157,7 @@ export async function importDevices(
   }
 
   if (toCreate.length > 0) {
-    await prisma.device.createMany({ data: toCreate });
+    await prisma.staticIp.createMany({ data: toCreate });
   }
   await Promise.all(updates);
 

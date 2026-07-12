@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { parseCidr, buildAllocationTable } from "@/lib/subnet";
+import { parseCidr, buildAllocationTable, type IpOccupant } from "@/lib/subnet";
 import { deleteSubnet } from "@/lib/actions/subnets";
 import { SubnetFormDialog } from "@/components/subnets/subnet-form-dialog";
 import { DeviceFormDialog } from "@/components/devices/device-form-dialog";
@@ -20,7 +20,7 @@ export default async function SubnetDetailPage({
   const [subnet, sites, subnets, vendors, deviceModels] = await Promise.all([
     prisma.subnet.findUnique({
       where: { id },
-      include: { site: true, devices: true },
+      include: { site: true, devices: true, staticIps: true },
     }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
     prisma.subnet.findMany({ orderBy: { name: "asc" } }),
@@ -30,25 +30,40 @@ export default async function SubnetDetailPage({
 
   if (!subnet) notFound();
 
+  const occupants: IpOccupant[] = [
+    ...subnet.devices.map((d) => ({
+      id: d.id,
+      hostname: d.hostname,
+      ipAddress: d.ipAddress,
+      kind: "device" as const,
+    })),
+    ...subnet.staticIps.map((s) => ({
+      id: s.id,
+      hostname: s.hostname ?? s.ipAddress,
+      ipAddress: s.ipAddress,
+      kind: "staticIp" as const,
+    })),
+  ];
+
   let parsed;
   let allocations: ReturnType<typeof buildAllocationTable> = [];
   let parseError: string | null = null;
   try {
     parsed = parseCidr(subnet.cidr);
     // Enumerating every address only makes sense for reasonably sized subnets;
-    // larger ones fall back to listing assigned devices directly (see below).
+    // larger ones fall back to listing occupants directly (see below).
     if (parsed.usableCount <= 1024) {
-      allocations = buildAllocationTable(subnet.cidr, subnet.devices);
+      allocations = buildAllocationTable(subnet.cidr, occupants);
     }
   } catch (err) {
     parseError = err instanceof Error ? err.message : "Invalid CIDR";
   }
 
-  const assignedDevices = subnet.devices.filter((d) => d.ipAddress);
+  const assignedOccupants = occupants.filter((o) => o.ipAddress);
   const usedCount =
     parsed && parsed.usableCount <= 1024
       ? allocations.filter((a) => a.used).length
-      : assignedDevices.length;
+      : assignedOccupants.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -126,17 +141,24 @@ export default async function SubnetDetailPage({
               <CardContent className="flex flex-col gap-3">
                 <p className="text-sm text-muted-foreground">
                   This subnet has {parsed!.usableCount} usable addresses — too
-                  many to list individually. Showing assigned devices only.
+                  many to list individually. Showing assigned devices and
+                  static IPs only.
                 </p>
-                {assignedDevices.map((d) => (
+                {assignedOccupants.map((o) => (
                   <div
-                    key={d.id}
+                    key={`${o.kind}-${o.id}`}
                     className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
                   >
-                    <span className="font-mono">{d.ipAddress}</span>
-                    <Link href={`/devices/${d.id}`} className="hover:underline">
-                      {d.hostname}
-                    </Link>
+                    <span className="font-mono">{o.ipAddress}</span>
+                    {o.kind === "device" ? (
+                      <Link href={`/devices/${o.id}`} className="hover:underline">
+                        {o.hostname}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {o.hostname} <Badge variant="outline">static</Badge>
+                      </span>
+                    )}
                   </div>
                 ))}
               </CardContent>
@@ -149,14 +171,19 @@ export default async function SubnetDetailPage({
                   >
                     <div className="flex flex-col">
                       <span className="font-mono">{a.ip}</span>
-                      {a.hostname && (
-                        <Link
-                          href={`/devices/${a.deviceId}`}
-                          className="text-xs text-muted-foreground hover:underline"
-                        >
-                          {a.hostname}
-                        </Link>
-                      )}
+                      {a.hostname &&
+                        (a.occupantKind === "device" ? (
+                          <Link
+                            href={`/devices/${a.occupantId}`}
+                            className="text-xs text-muted-foreground hover:underline"
+                          >
+                            {a.hostname}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {a.hostname} (static)
+                          </span>
+                        ))}
                     </div>
                     {a.used ? (
                       <Badge variant="default">used</Badge>

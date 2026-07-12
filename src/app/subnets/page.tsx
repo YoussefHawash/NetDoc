@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteSubnet } from "@/lib/actions/subnets";
-import { parseCidr, buildAllocationTable } from "@/lib/subnet";
+import { parseCidr, buildAllocationTable, type IpOccupant } from "@/lib/subnet";
 import { SubnetFormDialog } from "@/components/subnets/subnet-form-dialog";
 import { IpSectionNav } from "@/components/subnets/ip-section-nav";
 import { DeleteButton } from "@/components/delete-button";
@@ -12,7 +12,11 @@ export default async function SubnetsPage() {
   const [subnets, sites] = await Promise.all([
     prisma.subnet.findMany({
       orderBy: { name: "asc" },
-      include: { site: true, devices: { select: { id: true, hostname: true, ipAddress: true } } },
+      include: {
+        site: true,
+        devices: { select: { id: true, hostname: true, ipAddress: true } },
+        staticIps: { select: { id: true, hostname: true, ipAddress: true } },
+      },
     }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
   ]);
@@ -41,6 +45,15 @@ export default async function SubnetsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {subnets.map((subnet) => {
+          const occupants: IpOccupant[] = [
+            ...subnet.devices.map((d) => ({ ...d, kind: "device" as const })),
+            ...subnet.staticIps.map((s) => ({
+              id: s.id,
+              hostname: s.hostname ?? s.ipAddress,
+              ipAddress: s.ipAddress,
+              kind: "staticIp" as const,
+            })),
+          ];
           let usedCount = 0;
           let usableCount = 0;
           let parseError = false;
@@ -50,10 +63,9 @@ export default async function SubnetsPage() {
             // Enumerating every address is only cheap for reasonably sized subnets.
             usedCount =
               usableCount <= 1024
-                ? buildAllocationTable(subnet.cidr, subnet.devices).filter(
-                    (a) => a.used,
-                  ).length
-                : subnet.devices.filter((d) => d.ipAddress).length;
+                ? buildAllocationTable(subnet.cidr, occupants).filter((a) => a.used)
+                    .length
+                : occupants.filter((o) => o.ipAddress).length;
           } catch {
             parseError = true;
           }

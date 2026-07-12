@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deleteStaticIp } from "@/lib/actions/static-ips";
 import { IpSectionNav } from "@/components/subnets/ip-section-nav";
@@ -36,11 +37,16 @@ export default async function StaticIpsPage() {
             a full device record.
           </p>
         </div>
-        <StaticIpFormDialog
-          sites={sites}
-          subnets={subnets}
-          trigger={<Button>Add Static IP</Button>}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" render={<Link href="/subnets/import" />}>
+            Import from Scan
+          </Button>
+          <StaticIpFormDialog
+            sites={sites}
+            subnets={subnets}
+            trigger={<Button>Add Static IP</Button>}
+          />
+        </div>
       </div>
 
       <Card>

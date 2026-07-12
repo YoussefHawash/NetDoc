@@ -102,40 +102,27 @@ CREATE TABLE "IspIp" (
 );
 
 -- CreateTable
-CREATE TABLE "Vendor" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-
-    CONSTRAINT "Vendor_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "DeviceModel" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-
-    CONSTRAINT "DeviceModel_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Device" (
     "id" TEXT NOT NULL,
     "hostname" TEXT NOT NULL,
     "ipAddress" TEXT,
     "macAddress" TEXT,
     "type" "DeviceType" NOT NULL DEFAULT 'other',
+    "vendor" TEXT,
+    "model" TEXT,
     "serialNumber" TEXT,
+    "os" TEXT,
     "status" "DeviceStatus" NOT NULL DEFAULT 'active',
     "owner" TEXT,
     "notes" TEXT,
+    "purchaseDate" TIMESTAMP(3),
+    "warrantyExpiry" TIMESTAMP(3),
     "positionX" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "positionY" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "siteId" TEXT,
     "subnetId" TEXT,
-    "vendorId" TEXT,
-    "deviceModelId" TEXT,
 
     CONSTRAINT "Device_pkey" PRIMARY KEY ("id")
 );
@@ -156,12 +143,6 @@ CREATE TABLE "Connection" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Vlan_siteId_vlanId_key" ON "Vlan"("siteId", "vlanId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Vendor_name_key" ON "Vendor"("name");
-
--- CreateIndex
-CREATE UNIQUE INDEX "DeviceModel_name_key" ON "DeviceModel"("name");
 
 -- AddForeignKey
 ALTER TABLE "Vlan" ADD CONSTRAINT "Vlan_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "Site"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -192,12 +173,6 @@ ALTER TABLE "Device" ADD CONSTRAINT "Device_siteId_fkey" FOREIGN KEY ("siteId") 
 
 -- AddForeignKey
 ALTER TABLE "Device" ADD CONSTRAINT "Device_subnetId_fkey" FOREIGN KEY ("subnetId") REFERENCES "Subnet"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Device" ADD CONSTRAINT "Device_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES "Vendor"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Device" ADD CONSTRAINT "Device_deviceModelId_fkey" FOREIGN KEY ("deviceModelId") REFERENCES "DeviceModel"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Connection" ADD CONSTRAINT "Connection_deviceAId_fkey" FOREIGN KEY ("deviceAId") REFERENCES "Device"("id") ON DELETE CASCADE ON UPDATE CASCADE;

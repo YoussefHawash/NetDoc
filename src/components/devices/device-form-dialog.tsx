@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createDevice, updateDevice } from "@/lib/actions/devices";
 import { initialFormState } from "@/lib/actions/types";
+import { findSubnetForIp } from "@/lib/subnet";
 import { DeviceType, DeviceStatus } from "@/generated/prisma/enums";
 import { deviceTypeIcons, deviceTypeLabels as typeLabels } from "@/lib/device-icons";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,10 @@ export function DeviceFormDialog({
     initialFormState,
   );
   const wasPending = useRef(false);
+  const [subnetId, setSubnetId] = useState(
+    device?.subnetId ?? defaultSubnetId ?? "",
+  );
+  const subnetManuallySet = useRef(false);
 
   useEffect(() => {
     if (wasPending.current && !isPending) {
@@ -116,6 +121,11 @@ export function DeviceFormDialog({
               name="ipAddress"
               placeholder="10.0.0.1"
               defaultValue={device?.ipAddress ?? defaultIpAddress ?? ""}
+              onChange={(e) => {
+                if (subnetManuallySet.current) return;
+                const match = findSubnetForIp(e.target.value.trim(), subnets);
+                if (match) setSubnetId(match.id);
+              }}
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -223,10 +233,19 @@ export function DeviceFormDialog({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="subnetId">Subnet</Label>
+            <Label htmlFor="subnetId">
+              Subnet{" "}
+              <span className="font-normal text-muted-foreground">
+                (auto-detected from IP)
+              </span>
+            </Label>
             <Select
               name="subnetId"
-              defaultValue={device?.subnetId ?? defaultSubnetId ?? ""}
+              value={subnetId}
+              onValueChange={(v) => {
+                subnetManuallySet.current = true;
+                setSubnetId(v ?? "");
+              }}
             >
               <SelectTrigger id="subnetId" className="w-full">
                 <SelectValue placeholder="No subnet" />

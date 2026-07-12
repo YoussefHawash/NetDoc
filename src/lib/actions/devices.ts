@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { DeviceType, DeviceStatus } from "@/generated/prisma/enums";
-import { isValidIp } from "@/lib/subnet";
+import { isValidIp, findSubnetForIp } from "@/lib/subnet";
 import type { FormState } from "@/lib/actions/types";
 
 function str(formData: FormData, key: string): string | null {
@@ -24,7 +24,7 @@ function enumOrDefault<T extends string>(
     : fallback;
 }
 
-function buildDeviceData(formData: FormData) {
+async function buildDeviceData(formData: FormData) {
   const hostname = str(formData, "hostname");
   if (!hostname) throw new Error("Hostname is required");
 
@@ -37,6 +37,16 @@ function buildDeviceData(formData: FormData) {
   const portCount = portCountRaw ? Number(portCountRaw) : 0;
   if (!Number.isInteger(portCount) || portCount < 0 || portCount > 512) {
     throw new Error("Port count must be an integer between 0 and 512");
+  }
+
+  // The form auto-detects the subnet from the IP client-side, but fall back
+  // to detecting it here too in case the field was left untouched.
+  let subnetId = str(formData, "subnetId");
+  if (!subnetId && ipAddress) {
+    const subnets = await prisma.subnet.findMany({
+      select: { id: true, cidr: true },
+    });
+    subnetId = findSubnetForIp(ipAddress, subnets)?.id ?? null;
   }
 
   return {
@@ -56,7 +66,7 @@ function buildDeviceData(formData: FormData) {
     notes: str(formData, "notes"),
     portCount,
     siteId: str(formData, "siteId"),
-    subnetId: str(formData, "subnetId"),
+    subnetId,
   };
 }
 
@@ -65,7 +75,7 @@ export async function createDevice(
   formData: FormData,
 ): Promise<FormState> {
   try {
-    await prisma.device.create({ data: buildDeviceData(formData) });
+    await prisma.device.create({ data: await buildDeviceData(formData) });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to create device" };
   }
@@ -81,7 +91,7 @@ export async function updateDevice(
   try {
     await prisma.device.update({
       where: { id: deviceId },
-      data: buildDeviceData(formData),
+      data: await buildDeviceData(formData),
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to update device" };

@@ -139,6 +139,44 @@ export function buildAllocationTable(
   });
 }
 
+/** Finds which subnet (if any) an IP falls within. If ranges overlap, the
+ * most specific (longest prefix) match wins. */
+export function findSubnetForIp<T extends { cidr: string }>(
+  ip: string,
+  subnets: T[],
+): T | null {
+  let ipInt: number;
+  try {
+    ipInt = ipToInt(ip);
+  } catch {
+    return null;
+  }
+
+  let best: T | null = null;
+  let bestPrefix = -1;
+
+  for (const subnet of subnets) {
+    let parsed: ParsedSubnet;
+    try {
+      parsed = parseCidr(subnet.cidr);
+    } catch {
+      continue;
+    }
+    const networkInt = ipToInt(parsed.networkAddress);
+    const broadcastInt = ipToInt(parsed.broadcastAddress);
+    if (
+      ipInt >= networkInt &&
+      ipInt <= broadcastInt &&
+      parsed.prefixLength > bestPrefix
+    ) {
+      best = subnet;
+      bestPrefix = parsed.prefixLength;
+    }
+  }
+
+  return best;
+}
+
 export function nextFreeIp(
   cidr: string,
   devices: { ipAddress: string | null }[],

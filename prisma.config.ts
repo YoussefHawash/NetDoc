@@ -10,6 +10,8 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Migrations run against the direct (non-pooled) connection when available.
+    // Poolers like Neon's pgbouncer can reject some DDL statements.
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });

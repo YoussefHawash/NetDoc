@@ -1,65 +1,147 @@
-import Image from "next/image";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { parseCidr } from "@/lib/subnet";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { DeviceStatus } from "@/generated/prisma/enums";
 
-export default function Home() {
+const statusVariants: Record<DeviceStatus, "default" | "secondary" | "outline"> = {
+  active: "default",
+  inactive: "outline",
+  maintenance: "secondary",
+};
+
+export default async function DashboardPage() {
+  const [deviceCount, subnetCount, siteCount, connectionCount, statusGroups, subnets, recentDevices] =
+    await Promise.all([
+      prisma.device.count(),
+      prisma.subnet.count(),
+      prisma.site.count(),
+      prisma.connection.count(),
+      prisma.device.groupBy({ by: ["status"], _count: true }),
+      prisma.subnet.findMany({
+        include: { devices: { select: { ipAddress: true } } },
+      }),
+      prisma.device.findMany({
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        include: { site: true },
+      }),
+    ]);
+
+  const statusCounts: Record<DeviceStatus, number> = {
+    active: 0,
+    inactive: 0,
+    maintenance: 0,
+  };
+  for (const group of statusGroups) {
+    statusCounts[group.status] = group._count;
+  }
+
+  let totalUsable = 0;
+  let totalUsed = 0;
+  for (const subnet of subnets) {
+    try {
+      const parsed = parseCidr(subnet.cidr);
+      totalUsable += parsed.usableCount;
+      totalUsed += subnet.devices.filter((d) => d.ipAddress).length;
+    } catch {
+      // skip subnets with invalid CIDR
+    }
+  }
+  const utilizationPct = totalUsable > 0 ? Math.round((totalUsed / totalUsable) * 100) : 0;
+
+  const stats = [
+    { label: "Devices", value: deviceCount, href: "/devices" },
+    { label: "Subnets", value: subnetCount, href: "/subnets" },
+    { label: "Sites", value: siteCount, href: "/sites" },
+    { label: "Connections", value: connectionCount, href: "/topology" },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">
+          Overview of your network documentation.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {stats.map((stat) => (
+          <Link key={stat.label} href={stat.href}>
+            <Card className="transition-colors hover:bg-muted/40">
+              <CardContent>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <p className="text-2xl font-semibold">{stat.value}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Device status</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {(Object.keys(statusCounts) as DeviceStatus[]).map((status) => (
+              <div key={status} className="flex items-center justify-between text-sm">
+                <Badge variant={statusVariants[status]}>{status}</Badge>
+                <span>{statusCounts[status]}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>IP utilization</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${utilizationPct}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {totalUsed} / {totalUsable} addresses used across all subnets (
+              {utilizationPct}%)
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recently updated devices</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {recentDevices.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No devices yet.{" "}
+              <Link href="/devices" className="hover:underline">
+                Add your first device
+              </Link>
+              .
+            </p>
+          )}
+          {recentDevices.map((device) => (
+            <Link
+              key={device.id}
+              href={`/devices/${device.id}`}
+              className="flex items-center justify-between rounded-md border px-3 py-2 text-sm hover:bg-muted/40"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+              <span className="font-medium">{device.hostname}</span>
+              <span className="text-muted-foreground">
+                {device.site?.name ?? "—"}
+              </span>
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

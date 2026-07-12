@@ -1,0 +1,66 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { LinkType } from "@/generated/prisma/enums";
+import type { FormState } from "@/lib/actions/types";
+
+function str(formData: FormData, key: string): string | null {
+  const value = formData.get(key);
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export async function createConnection(deviceAId: string, deviceBId: string) {
+  if (deviceAId === deviceBId) {
+    throw new Error("A device cannot connect to itself");
+  }
+
+  const connection = await prisma.connection.create({
+    data: { deviceAId, deviceBId },
+  });
+
+  revalidatePath("/topology");
+  revalidatePath("/report");
+
+  return connection;
+}
+
+export async function updateConnection(
+  connectionId: string,
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const linkTypeValue = str(formData, "linkType");
+  const linkType =
+    linkTypeValue && Object.values(LinkType).includes(linkTypeValue as LinkType)
+      ? (linkTypeValue as LinkType)
+      : LinkType.copper;
+
+  try {
+    await prisma.connection.update({
+      where: { id: connectionId },
+      data: {
+        linkType,
+        label: str(formData, "label"),
+        portA: str(formData, "portA"),
+        portB: str(formData, "portB"),
+      },
+    });
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Failed to update connection",
+    };
+  }
+
+  revalidatePath("/topology");
+  revalidatePath("/report");
+  return { error: null };
+}
+
+export async function deleteConnection(connectionId: string) {
+  await prisma.connection.delete({ where: { id: connectionId } });
+  revalidatePath("/topology");
+  revalidatePath("/report");
+}

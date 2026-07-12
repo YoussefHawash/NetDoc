@@ -48,8 +48,14 @@ function ReportTable({
 const reportHead = "bg-muted/60 [&_th]:h-8 [&_th]:font-semibold";
 const reportBody = "[&_tr:nth-child(even)]:bg-muted/25 [&_td]:py-1.5";
 
+const tunnelTypeLabels: Record<string, string> = {
+  siteToSite: "Site-to-Site",
+  remoteAccess: "Remote Access",
+  other: "Other",
+};
+
 export default async function ReportPage() {
-  const [devices, subnets, sites, connections, staticIps, ispIps] =
+  const [devices, subnets, sites, connections, staticIps, ispIps, vlans, vpnTunnels] =
     await Promise.all([
       prisma.device.findMany({
         orderBy: { hostname: "asc" },
@@ -71,7 +77,23 @@ export default async function ReportPage() {
         orderBy: { provider: "asc" },
         include: { site: true },
       }),
+      prisma.vlan.findMany({
+        orderBy: { vlanId: "asc" },
+        include: { site: true },
+      }),
+      prisma.vpnTunnel.findMany({
+        orderBy: { name: "asc" },
+        include: { localSite: true, remoteSite: true, device: true },
+      }),
     ]);
+
+  const subnetsByVlanId = new Map<number, { name: string; cidr: string }[]>();
+  for (const subnet of subnets) {
+    if (subnet.vlanId == null) continue;
+    const list = subnetsByVlanId.get(subnet.vlanId) ?? [];
+    list.push(subnet);
+    subnetsByVlanId.set(subnet.vlanId, list);
+  }
 
   const generatedAt = new Date().toLocaleString(undefined, {
     dateStyle: "long",
@@ -244,7 +266,46 @@ export default async function ReportPage() {
         </ReportTable>
       </ReportSection>
 
-      <ReportSection index={4} title="Static IP Reservations">
+      <ReportSection index={4} title="VLAN Registry">
+        <ReportTable>
+          <TableHeader className={reportHead}>
+            <TableRow>
+              <TableHead>VLAN ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Purpose</TableHead>
+              <TableHead>Site</TableHead>
+              <TableHead>Subnets</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className={reportBody}>
+            {vlans.map((vlan) => {
+              const matchingSubnets = subnetsByVlanId.get(vlan.vlanId) ?? [];
+              return (
+                <TableRow key={vlan.id}>
+                  <TableCell className="font-mono">{vlan.vlanId}</TableCell>
+                  <TableCell className="font-medium">{vlan.name}</TableCell>
+                  <TableCell>{vlan.purpose ?? "—"}</TableCell>
+                  <TableCell>{vlan.site?.name ?? "—"}</TableCell>
+                  <TableCell>
+                    {matchingSubnets.length > 0
+                      ? matchingSubnets.map((s) => `${s.name} (${s.cidr})`).join(", ")
+                      : "—"}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {vlans.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  No VLANs recorded.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </ReportTable>
+      </ReportSection>
+
+      <ReportSection index={5} title="Static IP Reservations">
         <ReportTable>
           <TableHeader className={reportHead}>
             <TableRow>
@@ -280,7 +341,7 @@ export default async function ReportPage() {
         </ReportTable>
       </ReportSection>
 
-      <ReportSection index={5} title="ISP / WAN Connections">
+      <ReportSection index={6} title="ISP / WAN Connections">
         <ReportTable>
           <TableHeader className={reportHead}>
             <TableRow>
@@ -314,7 +375,49 @@ export default async function ReportPage() {
         </ReportTable>
       </ReportSection>
 
-      <ReportSection index={6} title="Network Connections">
+      <ReportSection index={7} title="VPN Tunnels">
+        <ReportTable>
+          <TableHeader className={reportHead}>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Local</TableHead>
+              <TableHead>Remote</TableHead>
+              <TableHead>Device</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className={reportBody}>
+            {vpnTunnels.map((tunnel) => (
+              <TableRow key={tunnel.id}>
+                <TableCell className="font-medium">{tunnel.name}</TableCell>
+                <TableCell>{tunnelTypeLabels[tunnel.tunnelType]}</TableCell>
+                <TableCell>{tunnel.status}</TableCell>
+                <TableCell>
+                  {[tunnel.localSite?.name, tunnel.localEndpoint]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </TableCell>
+                <TableCell>
+                  {[tunnel.remoteSite?.name, tunnel.remoteEndpoint]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </TableCell>
+                <TableCell>{tunnel.device?.hostname ?? "—"}</TableCell>
+              </TableRow>
+            ))}
+            {vpnTunnels.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  No VPN tunnels recorded.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </ReportTable>
+      </ReportSection>
+
+      <ReportSection index={8} title="Network Connections">
         <ReportTable>
           <TableHeader className={reportHead}>
             <TableRow>
@@ -344,7 +447,7 @@ export default async function ReportPage() {
         </ReportTable>
       </ReportSection>
 
-      <ReportSection index={7} title="Topology Diagram">
+      <ReportSection index={9} title="Topology Diagram">
         <StaticTopology devices={devices} connections={connections} />
       </ReportSection>
     </div>

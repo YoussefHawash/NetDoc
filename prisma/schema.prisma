@@ -33,6 +33,12 @@ enum LinkType {
   wifi
 }
 
+enum VpnTunnelType {
+  siteToSite
+  remoteAccess
+  other
+}
+
 model Site {
   id        String   @id @default(cuid())
   name      String
@@ -41,10 +47,50 @@ model Site {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  subnets   Subnet[]
-  devices   Device[]
-  staticIps StaticIp[]
-  ispIps    IspIp[]
+  subnets         Subnet[]
+  devices         Device[]
+  staticIps       StaticIp[]
+  ispIps          IspIp[]
+  vlans           Vlan[]
+  vpnTunnelsLocal  VpnTunnel[] @relation("VpnLocalSite")
+  vpnTunnelsRemote VpnTunnel[] @relation("VpnRemoteSite")
+}
+
+model Vlan {
+  id        String   @id @default(cuid())
+  vlanId    Int
+  name      String
+  purpose   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  siteId String?
+  site   Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  @@unique([siteId, vlanId])
+}
+
+model VpnTunnel {
+  id             String        @id @default(cuid())
+  name           String
+  tunnelType     VpnTunnelType @default(siteToSite)
+  status         DeviceStatus  @default(active)
+  localEndpoint  String?
+  remoteEndpoint String?
+  encryption     String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  localSiteId String?
+  localSite   Site?   @relation("VpnLocalSite", fields: [localSiteId], references: [id], onDelete: SetNull)
+
+  remoteSiteId String?
+  remoteSite   Site?   @relation("VpnRemoteSite", fields: [remoteSiteId], references: [id], onDelete: SetNull)
+
+  deviceId String?
+  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 }
 
 model Subnet {
@@ -123,6 +169,7 @@ model Device {
 
   connectionsA Connection[] @relation("DeviceA")
   connectionsB Connection[] @relation("DeviceB")
+  vpnTunnels   VpnTunnel[]
 }
 
 model Connection {

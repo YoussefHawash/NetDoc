@@ -5,15 +5,17 @@ const tabs = [
   { key: "subnets", href: "/subnets", label: "Subnets" },
   { key: "static-ips", href: "/subnets/static-ips", label: "Static IPs" },
   { key: "isp-ips", href: "/subnets/isp-ips", label: "ISP IPs" },
+  { key: "vlans", href: "/subnets/vlans", label: "VLANs" },
+  { key: "vpn-tunnels", href: "/subnets/vpn-tunnels", label: "VPN Tunnels" },
 ] as const;
 
 export function IpSectionNav({
   active,
 }: {
-  active: "subnets" | "static-ips" | "isp-ips";
+  active: "subnets" | "static-ips" | "isp-ips" | "vlans" | "vpn-tunnels";
 }) {
   return (
-    <div className="flex gap-1 border-b">
+    <div className="flex flex-wrap gap-1 border-b">
       {tabs.map((tab) => (
         <Link
           key={tab.key}

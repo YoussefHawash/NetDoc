@@ -10,6 +10,8 @@ async function main() {
   await prisma.connection.deleteMany();
   await prisma.staticIp.deleteMany();
   await prisma.ispIp.deleteMany();
+  await prisma.vpnTunnel.deleteMany();
+  await prisma.vlan.deleteMany();
   await prisma.device.deleteMany();
   await prisma.subnet.deleteMany();
   await prisma.site.deleteMany();
@@ -232,6 +234,30 @@ async function main() {
         notes: "Backup / failover circuit",
       },
     ],
+  });
+
+  await prisma.vlan.createMany({
+    data: [
+      { vlanId: 10, name: "Core / Servers", purpose: "Core network gear and servers", siteId: hq.id },
+      { vlanId: 20, name: "User Workstations", purpose: "End-user devices", siteId: hq.id },
+      { vlanId: 30, name: "Branch LAN", purpose: "Branch office LAN", siteId: branch.id },
+      { vlanId: 99, name: "Management", purpose: "Out-of-band device management", siteId: hq.id },
+    ],
+  });
+
+  await prisma.vpnTunnel.create({
+    data: {
+      name: "HQ-Branch Site-to-Site",
+      tunnelType: "siteToSite",
+      status: "active",
+      localEndpoint: "203.0.113.1",
+      remoteEndpoint: "198.51.100.1",
+      encryption: "IKEv2, AES256-SHA256",
+      localSiteId: hq.id,
+      remoteSiteId: branch.id,
+      deviceId: coreRouter.id,
+      notes: "Primary inter-site tunnel",
+    },
   });
 
   console.log("Seed complete.");

@@ -109,6 +109,7 @@ function connectionToEdge(connection: ConnectionInput): Edge {
       ? `${connection.linkType} · ${connection.label}`
       : connection.linkType,
     data: {
+      id: connection.id,
       linkType: connection.linkType,
       label: connection.label,
       portA: connection.portA,

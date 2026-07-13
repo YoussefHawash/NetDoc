@@ -2,14 +2,39 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { deleteDevice } from "@/lib/actions/devices";
+import { createConnection, deleteConnection } from "@/lib/actions/connections";
 import { DeviceFormDialog } from "@/components/devices/device-form-dialog";
 import { PortPanel } from "@/components/ports/port-panel";
 import { DeleteButton } from "@/components/delete-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DeviceStatus } from "@/generated/prisma/enums";
+import { DeviceStatus, LinkType } from "@/generated/prisma/enums";
 import { deviceTypeIcons, deviceTypeLabels as typeLabels } from "@/lib/device-icons";
+
+async function connectPort(
+  deviceId: string,
+  input: {
+    portOnThisDevice: string;
+    targetDeviceId: string;
+    portOnPeer: string | null;
+    linkType: LinkType;
+  },
+) {
+  "use server";
+  await createConnection(
+    deviceId,
+    input.targetDeviceId,
+    input.portOnThisDevice,
+    input.portOnPeer,
+    input.linkType,
+  );
+}
+
+async function disconnectPort(connectionId: string) {
+  "use server";
+  await deleteConnection(connectionId);
+}
 
 const statusVariants: Record<DeviceStatus, "default" | "secondary" | "outline"> = {
   active: "default",
@@ -168,7 +193,6 @@ export default async function DeviceDetailPage({
         </CardHeader>
         <CardContent>
           <PortPanel
-            deviceId={device.id}
             portCount={device.portCount}
             connections={connections.map((c) => ({
               id: c.id,
@@ -180,6 +204,8 @@ export default async function DeviceDetailPage({
               label: c.label,
             }))}
             otherDevices={otherDevices}
+            onConnect={connectPort.bind(null, device.id)}
+            onDisconnect={disconnectPort}
           />
         </CardContent>
       </Card>

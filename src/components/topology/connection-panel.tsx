@@ -1,9 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import { updateConnection, deleteConnection } from "@/lib/actions/connections";
-import { initialFormState } from "@/lib/actions/types";
+import { useState } from "react";
 import { LinkType } from "@/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,37 +27,20 @@ export function ConnectionPanel({
   deviceAHostname,
   deviceBHostname,
   onClose,
-  onUpdated,
-  onDeleted,
+  onSave,
+  onDelete,
 }: {
   connection: ConnectionData;
   deviceAHostname: string;
   deviceBHostname: string;
   onClose: () => void;
-  onUpdated: (data: ConnectionData) => void;
-  onDeleted: () => void;
+  onSave: (data: ConnectionData) => void;
+  onDelete: () => void;
 }) {
-  const boundAction = updateConnection.bind(null, connection.id);
-  const [state, formAction, isPending] = useActionState(
-    boundAction,
-    initialFormState,
-  );
-  const wasPending = useRef(false);
-  const pendingValues = useRef<ConnectionData>(connection);
-  const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    if (wasPending.current && !isPending) {
-      if (state.error) {
-        toast.error(state.error);
-      } else {
-        toast.success("Connection updated");
-        onUpdated(pendingValues.current);
-      }
-    }
-    wasPending.current = isPending;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPending, state]);
+  const [linkType, setLinkType] = useState<LinkType>(connection.linkType);
+  const [portA, setPortA] = useState(connection.portA ?? "");
+  const [portB, setPortB] = useState(connection.portB ?? "");
+  const [label, setLabel] = useState(connection.label ?? "");
 
   return (
     <Card className="w-72 shadow-lg">
@@ -74,23 +54,25 @@ export function ConnectionPanel({
       </CardHeader>
       <CardContent>
         <form
-          action={formAction}
           onSubmit={(e) => {
-            const form = e.currentTarget;
-            const data = new FormData(form);
-            pendingValues.current = {
+            e.preventDefault();
+            onSave({
               id: connection.id,
-              linkType: (data.get("linkType") as LinkType) ?? LinkType.copper,
-              label: (data.get("label") as string) || null,
-              portA: (data.get("portA") as string) || null,
-              portB: (data.get("portB") as string) || null,
-            };
+              linkType,
+              label: label || null,
+              portA: portA || null,
+              portB: portB || null,
+            });
           }}
           className="flex flex-col gap-3"
         >
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="linkType">Link type</Label>
-            <Select name="linkType" defaultValue={connection.linkType}>
+            <Select
+              name="linkType"
+              value={linkType}
+              onValueChange={(v) => v && setLinkType(v as LinkType)}
+            >
               <SelectTrigger id="linkType" className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -106,42 +88,43 @@ export function ConnectionPanel({
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="portA">{deviceAHostname} port</Label>
-              <Input id="portA" name="portA" defaultValue={connection.portA ?? ""} />
+              <Input
+                id="portA"
+                value={portA}
+                onChange={(e) => setPortA(e.target.value)}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="portB">{deviceBHostname} port</Label>
-              <Input id="portB" name="portB" defaultValue={connection.portB ?? ""} />
+              <Input
+                id="portB"
+                value={portB}
+                onChange={(e) => setPortB(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="label">Label</Label>
-            <Input id="label" name="label" defaultValue={connection.label ?? ""} />
+            <Input
+              id="label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
           </div>
           <div className="flex justify-between gap-2">
             <Button
               type="button"
               variant="destructive"
               size="sm"
-              disabled={deleting}
-              onClick={async () => {
-                if (!window.confirm("Delete this connection?")) return;
-                setDeleting(true);
-                try {
-                  await deleteConnection(connection.id);
-                  toast.success("Connection deleted");
-                  onDeleted();
-                } catch (err) {
-                  toast.error(
-                    err instanceof Error ? err.message : "Failed to delete",
-                  );
-                  setDeleting(false);
-                }
+              onClick={() => {
+                if (!window.confirm("Remove this connection?")) return;
+                onDelete();
               }}
             >
-              {deleting ? "Deleting…" : "Delete"}
+              Remove
             </Button>
-            <Button type="submit" size="sm" disabled={isPending}>
-              {isPending ? "Saving…" : "Save"}
+            <Button type="submit" size="sm">
+              Apply
             </Button>
           </div>
         </form>

@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { createConnection, deleteConnection } from "@/lib/actions/connections";
 import { LinkType } from "@/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,15 +34,22 @@ type PortConnection = {
 };
 
 export function PortPanel({
-  deviceId,
   portCount,
   connections,
   otherDevices,
+  onConnect,
+  onDisconnect,
 }: {
-  deviceId: string;
   portCount: number;
   connections: PortConnection[];
   otherDevices: { id: string; hostname: string }[];
+  onConnect: (input: {
+    portOnThisDevice: string;
+    targetDeviceId: string;
+    portOnPeer: string | null;
+    linkType: LinkType;
+  }) => Promise<void> | void;
+  onDisconnect: (connectionId: string) => Promise<void> | void;
 }) {
   const [connectPort, setConnectPort] = useState<number | null>(null);
   const [viewingConnectionId, setViewingConnectionId] = useState<string | null>(
@@ -73,13 +79,12 @@ export function PortPanel({
     if (!connectPort || !selectedDeviceId) return;
     startTransition(async () => {
       try {
-        await createConnection(
-          deviceId,
-          selectedDeviceId,
-          String(connectPort),
-          theirPort || null,
+        await onConnect({
+          portOnThisDevice: String(connectPort),
+          targetDeviceId: selectedDeviceId,
+          portOnPeer: theirPort || null,
           linkType,
-        );
+        });
         toast.success(`Port ${connectPort} connected`);
         setConnectPort(null);
       } catch (err) {
@@ -91,7 +96,7 @@ export function PortPanel({
   function handleDisconnect(connectionId: string) {
     startTransition(async () => {
       try {
-        await deleteConnection(connectionId);
+        await onDisconnect(connectionId);
         toast.success("Port disconnected");
         setViewingConnectionId(null);
       } catch (err) {

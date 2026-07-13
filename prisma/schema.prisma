@@ -39,6 +39,11 @@ enum VpnTunnelType {
   other
 }
 
+enum TopologyShapeType {
+  circle
+  label
+}
+
 model Site {
   id        String   @id @default(cuid())
   name      String
@@ -166,6 +171,7 @@ model Device {
   portCount    Int          @default(0)
   positionX    Float        @default(0)
   positionY    Float        @default(0)
+  onCanvas     Boolean      @default(false)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -184,6 +190,19 @@ model Device {
   connectionsA Connection[] @relation("DeviceA")
   connectionsB Connection[] @relation("DeviceB")
   vpnTunnels   VpnTunnel[]
+}
+
+model TopologyShape {
+  id        String            @id @default(cuid())
+  type      TopologyShapeType
+  x         Float
+  y         Float
+  width     Float             @default(200)
+  height    Float             @default(120)
+  text      String?
+  color     String            @default("#6366f1")
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 }
 
 model Connection {

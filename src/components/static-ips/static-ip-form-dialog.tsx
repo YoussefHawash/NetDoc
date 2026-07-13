@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createStaticIp, updateStaticIp } from "@/lib/actions/static-ips";
 import { initialFormState } from "@/lib/actions/types";
+import { selectItems } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,6 +118,13 @@ export function StaticIpFormDialog({
             <Select
               name="subnetId"
               defaultValue={staticIp?.subnetId ?? ""}
+              items={selectItems([
+                { value: "", label: "No subnet" },
+                ...subnets.map((s) => ({
+                  value: s.id,
+                  label: `${s.name} (${s.cidr})`,
+                })),
+              ])}
             >
               <SelectTrigger id="subnetId" className="w-full">
                 <SelectValue placeholder="No subnet" />
@@ -133,7 +141,14 @@ export function StaticIpFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="siteId">Site</Label>
-            <Select name="siteId" defaultValue={staticIp?.siteId ?? ""}>
+            <Select
+              name="siteId"
+              defaultValue={staticIp?.siteId ?? ""}
+              items={selectItems([
+                { value: "", label: "No site" },
+                ...sites.map((s) => ({ value: s.id, label: s.name })),
+              ])}
+            >
               <SelectTrigger id="siteId" className="w-full">
                 <SelectValue placeholder="No site" />
               </SelectTrigger>

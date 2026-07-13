@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { createVpnTunnel, updateVpnTunnel } from "@/lib/actions/vpn-tunnels";
 import { initialFormState } from "@/lib/actions/types";
 import { VpnTunnelType, DeviceStatus } from "@/generated/prisma/enums";
+import { selectItems } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,6 +104,12 @@ export function VpnTunnelFormDialog({
             <Select
               name="tunnelType"
               defaultValue={tunnel?.tunnelType ?? VpnTunnelType.siteToSite}
+              items={selectItems(
+                Object.values(VpnTunnelType).map((type) => ({
+                  value: type,
+                  label: tunnelTypeLabels[type],
+                })),
+              )}
             >
               <SelectTrigger id="tunnelType" className="w-full">
                 <SelectValue />
@@ -160,7 +167,14 @@ export function VpnTunnelFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="localSiteId">Local Site</Label>
-            <Select name="localSiteId" defaultValue={tunnel?.localSiteId ?? ""}>
+            <Select
+              name="localSiteId"
+              defaultValue={tunnel?.localSiteId ?? ""}
+              items={selectItems([
+                { value: "", label: "No site" },
+                ...sites.map((s) => ({ value: s.id, label: s.name })),
+              ])}
+            >
               <SelectTrigger id="localSiteId" className="w-full">
                 <SelectValue placeholder="No site" />
               </SelectTrigger>
@@ -176,7 +190,14 @@ export function VpnTunnelFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="remoteSiteId">Remote Site</Label>
-            <Select name="remoteSiteId" defaultValue={tunnel?.remoteSiteId ?? ""}>
+            <Select
+              name="remoteSiteId"
+              defaultValue={tunnel?.remoteSiteId ?? ""}
+              items={selectItems([
+                { value: "", label: "No site" },
+                ...sites.map((s) => ({ value: s.id, label: s.name })),
+              ])}
+            >
               <SelectTrigger id="remoteSiteId" className="w-full">
                 <SelectValue placeholder="No site" />
               </SelectTrigger>
@@ -192,7 +213,14 @@ export function VpnTunnelFormDialog({
           </div>
           <div className="col-span-2 flex flex-col gap-1.5">
             <Label htmlFor="deviceId">Terminating Device</Label>
-            <Select name="deviceId" defaultValue={tunnel?.deviceId ?? ""}>
+            <Select
+              name="deviceId"
+              defaultValue={tunnel?.deviceId ?? ""}
+              items={selectItems([
+                { value: "", label: "No device" },
+                ...devices.map((d) => ({ value: d.id, label: d.hostname })),
+              ])}
+            >
               <SelectTrigger id="deviceId" className="w-full">
                 <SelectValue placeholder="No device" />
               </SelectTrigger>

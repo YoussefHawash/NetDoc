@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { LinkType } from "@/generated/prisma/enums";
+import { selectItems } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,6 +161,9 @@ export function PortPanel({
               <Select
                 value={selectedDeviceId}
                 onValueChange={(v) => setSelectedDeviceId(v ?? "")}
+                items={selectItems(
+                  otherDevices.map((d) => ({ value: d.id, label: d.hostname })),
+                )}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a device" />

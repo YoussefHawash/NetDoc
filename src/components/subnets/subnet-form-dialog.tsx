@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createSubnet, updateSubnet } from "@/lib/actions/subnets";
 import { initialFormState } from "@/lib/actions/types";
+import { selectItems } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,7 +97,14 @@ export function SubnetFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="siteId">Site</Label>
-            <Select name="siteId" defaultValue={subnet?.siteId ?? ""}>
+            <Select
+              name="siteId"
+              defaultValue={subnet?.siteId ?? ""}
+              items={selectItems([
+                { value: "", label: "No site" },
+                ...sites.map((s) => ({ value: s.id, label: s.name })),
+              ])}
+            >
               <SelectTrigger id="siteId" className="w-full">
                 <SelectValue placeholder="No site" />
               </SelectTrigger>

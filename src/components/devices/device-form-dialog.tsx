@@ -7,6 +7,7 @@ import { initialFormState } from "@/lib/actions/types";
 import { findSubnetForIp } from "@/lib/subnet";
 import { DeviceType, DeviceStatus } from "@/generated/prisma/enums";
 import { deviceTypeIcons, deviceTypeLabels as typeLabels } from "@/lib/device-icons";
+import { selectItems } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,7 +155,16 @@ export function DeviceFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="type">Type</Label>
-            <Select name="type" defaultValue={device?.type ?? DeviceType.other}>
+            <Select
+              name="type"
+              defaultValue={device?.type ?? DeviceType.other}
+              items={selectItems(
+                Object.values(DeviceType).map((type) => ({
+                  value: type,
+                  label: typeLabels[type],
+                })),
+              )}
+            >
               <SelectTrigger id="type" className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -176,6 +186,12 @@ export function DeviceFormDialog({
             <Select
               name="status"
               defaultValue={device?.status ?? DeviceStatus.active}
+              items={selectItems(
+                Object.values(DeviceStatus).map((status) => ({
+                  value: status,
+                  label: statusLabels[status],
+                })),
+              )}
             >
               <SelectTrigger id="status" className="w-full">
                 <SelectValue />
@@ -191,7 +207,14 @@ export function DeviceFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="vendorId">Vendor</Label>
-            <Select name="vendorId" defaultValue={device?.vendorId ?? ""}>
+            <Select
+              name="vendorId"
+              defaultValue={device?.vendorId ?? ""}
+              items={selectItems([
+                { value: "", label: "No vendor" },
+                ...vendors.map((v) => ({ value: v.id, label: v.name })),
+              ])}
+            >
               <SelectTrigger id="vendorId" className="w-full">
                 <SelectValue placeholder="No vendor" />
               </SelectTrigger>
@@ -210,6 +233,10 @@ export function DeviceFormDialog({
             <Select
               name="deviceModelId"
               defaultValue={device?.deviceModelId ?? ""}
+              items={selectItems([
+                { value: "", label: "No model" },
+                ...deviceModels.map((m) => ({ value: m.id, label: m.name })),
+              ])}
             >
               <SelectTrigger id="deviceModelId" className="w-full">
                 <SelectValue placeholder="No model" />
@@ -261,6 +288,13 @@ export function DeviceFormDialog({
                 subnetManuallySet.current = true;
                 setSubnetId(v ?? "");
               }}
+              items={selectItems([
+                { value: "", label: "No subnet" },
+                ...subnets.map((s) => ({
+                  value: s.id,
+                  label: `${s.name} (${s.cidr})`,
+                })),
+              ])}
             >
               <SelectTrigger id="subnetId" className="w-full">
                 <SelectValue placeholder="No subnet" />
@@ -277,7 +311,14 @@ export function DeviceFormDialog({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="siteId">Site</Label>
-            <Select name="siteId" defaultValue={device?.siteId ?? ""}>
+            <Select
+              name="siteId"
+              defaultValue={device?.siteId ?? ""}
+              items={selectItems([
+                { value: "", label: "No site" },
+                ...sites.map((s) => ({ value: s.id, label: s.name })),
+              ])}
+            >
               <SelectTrigger id="siteId" className="w-full">
                 <SelectValue placeholder="No site" />
               </SelectTrigger>

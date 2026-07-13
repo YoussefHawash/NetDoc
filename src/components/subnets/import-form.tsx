@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { importStaticIps } from "@/lib/actions/import-static-ips";
 import { initialImportState } from "@/lib/actions/types";
+import { selectItems } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -61,7 +62,14 @@ export function ImportForm({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="subnetId">Subnet</Label>
-        <Select name="subnetId" defaultValue="">
+        <Select
+          name="subnetId"
+          defaultValue=""
+          items={selectItems([
+            { value: "", label: "No subnet" },
+            ...subnets.map((s) => ({ value: s.id, label: `${s.name} (${s.cidr})` })),
+          ])}
+        >
           <SelectTrigger id="subnetId" className="w-full">
             <SelectValue placeholder="No subnet" />
           </SelectTrigger>
@@ -77,7 +85,14 @@ export function ImportForm({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="siteId">Site (optional)</Label>
-        <Select name="siteId" defaultValue="">
+        <Select
+          name="siteId"
+          defaultValue=""
+          items={selectItems([
+            { value: "", label: "No site" },
+            ...sites.map((s) => ({ value: s.id, label: s.name })),
+          ])}
+        >
           <SelectTrigger id="siteId" className="w-full">
             <SelectValue placeholder="No site" />
           </SelectTrigger>

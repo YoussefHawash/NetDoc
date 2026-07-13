@@ -17,14 +17,20 @@ import {
   NodeResizer,
   Handle,
   Position,
+  BaseEdge,
+  EdgeLabelRenderer,
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useInternalNode,
+  getStraightPath,
   type Node,
   type Edge,
+  type InternalNode,
   type NodeChange,
   type EdgeChange,
   type NodeProps,
+  type EdgeProps,
 } from "@xyflow/react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -102,8 +108,96 @@ function newId() {
 }
 
 function edgeLabel(data: EdgeData): string {
-  return data.label ? `${data.linkType} · ${data.label}` : data.linkType;
+  const ports =
+    data.portA || data.portB ? `${data.portA ?? "?"} ↔ ${data.portB ?? "?"}` : null;
+  if (ports && data.label) return `${ports} · ${data.label}`;
+  if (ports) return ports;
+  if (data.label) return data.label;
+  return data.linkType;
 }
+
+// Computes where the line between two node centers crosses each node's
+// border, so wires meet devices from whichever side they're actually
+// facing instead of always leaving from a fixed left/right handle.
+function getNodeIntersection(intersectionNode: InternalNode, targetNode: InternalNode) {
+  const w = (intersectionNode.measured.width ?? 0) / 2;
+  const h = (intersectionNode.measured.height ?? 0) / 2;
+  const x2 = intersectionNode.internals.positionAbsolute.x + w;
+  const y2 = intersectionNode.internals.positionAbsolute.y + h;
+  const x1 = targetNode.internals.positionAbsolute.x + (targetNode.measured.width ?? 0) / 2;
+  const y1 = targetNode.internals.positionAbsolute.y + (targetNode.measured.height ?? 0) / 2;
+
+  const xx1 = (x1 - x2) / (2 * w) - (y1 - y2) / (2 * h);
+  const yy1 = (x1 - x2) / (2 * w) + (y1 - y2) / (2 * h);
+  const a = 1 / (Math.abs(xx1) + Math.abs(yy1) || 1);
+  const xx3 = a * xx1;
+  const yy3 = a * yy1;
+
+  return { x: w * (xx3 + yy3) + x2, y: h * (-xx3 + yy3) + y2 };
+}
+
+function getEdgeParams(source: InternalNode, target: InternalNode) {
+  const sourceIntersection = getNodeIntersection(source, target);
+  const targetIntersection = getNodeIntersection(target, source);
+  return {
+    sx: sourceIntersection.x,
+    sy: sourceIntersection.y,
+    tx: targetIntersection.x,
+    ty: targetIntersection.y,
+  };
+}
+
+function FloatingEdge({
+  id,
+  source,
+  target,
+  markerEnd,
+  style,
+  label,
+  selected,
+}: EdgeProps) {
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
+
+  if (!sourceNode || !targetNode) return null;
+
+  const { sx, sy, tx, ty } = getEdgeParams(sourceNode, targetNode);
+  const [edgePath, labelX, labelY] = getStraightPath({
+    sourceX: sx,
+    sourceY: sy,
+    targetX: tx,
+    targetY: ty,
+  });
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={style}
+        interactionWidth={16}
+      />
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: "absolute",
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            }}
+            className={`nodrag nopan rounded border bg-card px-1.5 py-0.5 text-[10px] whitespace-nowrap text-foreground shadow-sm ${
+              selected ? "border-primary" : "border-border"
+            }`}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+const edgeTypes = { floating: FloatingEdge };
 
 function DeviceNode({ data, selected }: NodeProps<Node<DeviceNodeData>>) {
   const Icon = deviceTypeIcons[data.deviceType];
@@ -266,6 +360,7 @@ function connectionToEdge(connection: ConnectionInput): Edge<EdgeData> {
   };
   return {
     id: connection.id,
+    type: "floating",
     source: connection.deviceAId,
     target: connection.deviceBId,
     label: edgeLabel(data),
@@ -498,6 +593,7 @@ function TopologyCanvasInner({
         };
         const edge: Edge<EdgeData> = {
           id: newId(),
+          type: "floating",
           source: deviceId,
           target: input.targetDeviceId,
           label: edgeLabel(data),
@@ -745,6 +841,7 @@ function TopologyCanvasInner({
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               nodesConnectable={false}
               deleteKeyCode={["Backspace", "Delete"]}
               onNodesChange={handleNodesChange}

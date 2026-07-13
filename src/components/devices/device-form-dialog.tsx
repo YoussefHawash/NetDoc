@@ -30,6 +30,7 @@ import {
 type Device = {
   id: string;
   hostname: string;
+  displayName: string | null;
   ipAddress: string | null;
   macAddress: string | null;
   type: DeviceType;
@@ -105,13 +106,27 @@ export function DeviceFormDialog({
           action={formAction}
           className="grid max-h-[70vh] grid-cols-2 gap-4 overflow-y-auto px-1"
         >
-          <div className="col-span-2 flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="hostname">Hostname</Label>
             <Input
               id="hostname"
               name="hostname"
               defaultValue={device?.hostname}
               required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="displayName">
+              Name{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional, shown on topology)
+              </span>
+            </Label>
+            <Input
+              id="displayName"
+              name="displayName"
+              placeholder={device?.hostname}
+              defaultValue={device?.displayName ?? ""}
             />
           </div>
           <div className="flex flex-col gap-1.5">

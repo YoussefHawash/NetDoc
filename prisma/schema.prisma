@@ -161,6 +161,7 @@ model DeviceModel {
 model Device {
   id           String       @id @default(cuid())
   hostname     String
+  displayName  String?
   ipAddress    String?
   macAddress   String?
   type         DeviceType   @default(other)

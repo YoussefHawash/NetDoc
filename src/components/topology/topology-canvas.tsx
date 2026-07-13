@@ -44,6 +44,7 @@ import { deviceTypeIcons, deviceTypeLabels as typeLabels } from "@/lib/device-ic
 type DeviceInput = {
   id: string;
   hostname: string;
+  displayName: string | null;
   type: DeviceType;
   status: DeviceStatus;
   ipAddress: string | null;
@@ -226,13 +227,17 @@ const nodeTypes = {
   labelShape: LabelShapeNode,
 };
 
+function deviceLabel(device: DeviceInput): string {
+  return device.displayName || device.hostname;
+}
+
 function deviceToNode(device: DeviceInput): Node<DeviceNodeData> {
   return {
     id: device.id,
     type: "device",
     position: { x: device.positionX, y: device.positionY },
     data: {
-      hostname: device.hostname,
+      hostname: deviceLabel(device),
       deviceType: device.type,
       status: device.status,
       ipAddress: device.ipAddress,
@@ -277,11 +282,11 @@ function PaletteItem({ device }: { device: DeviceInput }) {
         e.dataTransfer.setData("application/x-netdoc-device", device.id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      title={`Drag ${device.hostname} onto the canvas`}
+      title={`Drag ${deviceLabel(device)} onto the canvas`}
       className="flex cursor-grab items-center gap-2 rounded-md border bg-card px-2 py-1.5 text-xs active:cursor-grabbing hover:bg-muted/50"
     >
       <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate">{device.hostname}</span>
+      <span className="truncate">{deviceLabel(device)}</span>
     </div>
   );
 }
@@ -340,7 +345,7 @@ function TopologyCanvasInner({
 
   const deviceById = useMemo(() => new Map(devices.map((d) => [d.id, d])), [devices]);
   const hostnameById = useMemo(
-    () => new Map(devices.map((d) => [d.id, d.hostname])),
+    () => new Map(devices.map((d) => [d.id, deviceLabel(d)])),
     [devices],
   );
 

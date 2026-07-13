@@ -9,6 +9,7 @@ export default async function TopologyPage() {
         select: {
           id: true,
           hostname: true,
+          displayName: true,
           type: true,
           status: true,
           ipAddress: true,

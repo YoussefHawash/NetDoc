@@ -51,6 +51,7 @@ async function buildDeviceData(formData: FormData) {
 
   return {
     hostname,
+    displayName: str(formData, "displayName"),
     ipAddress,
     macAddress: str(formData, "macAddress"),
     type: enumOrDefault(str(formData, "type"), DeviceType, DeviceType.other),
